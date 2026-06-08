@@ -18,7 +18,9 @@ export function ControlsHint() {
       }`}
     >
       <div className="flex items-center gap-3 rounded-full border border-white/10 bg-zinc-900/60 px-4 py-2 text-xs text-white/70 backdrop-blur-md">
-        <span><kbd className="font-semibold text-white">WASD</kbd> move</span>
+        <span><kbd className="font-semibold text-white">Arrows</kbd> walk</span>
+        <span className="text-white/20">•</span>
+        <span><kbd className="font-semibold text-white">WASD</kbd> look</span>
         <span className="text-white/20">•</span>
         <span><kbd className="font-semibold text-white">Shift</kbd> run</span>
         <span className="text-white/20">•</span>

@@ -9,10 +9,14 @@ import type { MutableRefObject } from "react";
  * Using a plain mutable object (not React state) avoids re-rendering 60×/sec.
  */
 export interface InputState {
-  /** -1 (back) … 1 (forward) */
+  /** -1 (back) … 1 (forward) — walk, from the arrow keys. */
   forward: number;
-  /** -1 (left) … 1 (right) */
+  /** -1 (left) … 1 (right) — strafe, from the arrow keys. */
   right: number;
+  /** -1 (look left) … 1 (look right) — camera yaw, from A/D. */
+  lookYaw: number;
+  /** -1 (look down) … 1 (look up) — camera pitch, from W/S. */
+  lookPitch: number;
   /** Sprint modifier. */
   run: boolean;
   /** Set true on a jump press; the Player consumes (resets) it. */
@@ -22,7 +26,15 @@ export interface InputState {
 }
 
 export function createInputState(): InputState {
-  return { forward: 0, right: 0, run: false, jumpQueued: false, interactQueued: false };
+  return {
+    forward: 0,
+    right: 0,
+    lookYaw: 0,
+    lookPitch: 0,
+    run: false,
+    jumpQueued: false,
+    interactQueued: false,
+  };
 }
 
 const MOVE_CODES = new Set([
@@ -54,12 +66,20 @@ export function useKeyboardControls(inputRef: MutableRefObject<InputState>) {
 
     const recompute = () => {
       const i = inputRef.current;
-      const fwd = pressed.has("KeyW") || pressed.has("ArrowUp") ? 1 : 0;
-      const back = pressed.has("KeyS") || pressed.has("ArrowDown") ? 1 : 0;
-      const rt = pressed.has("KeyD") || pressed.has("ArrowRight") ? 1 : 0;
-      const lf = pressed.has("KeyA") || pressed.has("ArrowLeft") ? 1 : 0;
+      // Arrow keys walk (move relative to where the camera looks).
+      const fwd = pressed.has("ArrowUp") ? 1 : 0;
+      const back = pressed.has("ArrowDown") ? 1 : 0;
+      const rt = pressed.has("ArrowRight") ? 1 : 0;
+      const lf = pressed.has("ArrowLeft") ? 1 : 0;
       i.forward = fwd - back;
       i.right = rt - lf;
+      // WASD aims the camera: A/D look left/right, W/S look up/down.
+      const lookR = pressed.has("KeyD") ? 1 : 0;
+      const lookL = pressed.has("KeyA") ? 1 : 0;
+      const lookUp = pressed.has("KeyW") ? 1 : 0;
+      const lookDown = pressed.has("KeyS") ? 1 : 0;
+      i.lookYaw = lookR - lookL;
+      i.lookPitch = lookUp - lookDown;
       i.run = pressed.has("ShiftLeft") || pressed.has("ShiftRight");
     };
 

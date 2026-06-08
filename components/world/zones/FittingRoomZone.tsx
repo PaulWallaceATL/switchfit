@@ -1,6 +1,5 @@
 "use client";
 
-import { Text } from "@react-three/drei";
 import { ShopInteriorZone, type ZoneInteriorProps } from "@/components/world/zones/ShopInteriorZone";
 import { Hotspot } from "@/components/world/Hotspot";
 import { useGameStore } from "@/lib/game/store";
@@ -13,18 +12,6 @@ import { useGameStore } from "@/lib/game/store";
 export function FittingRoomZone({ zone }: ZoneInteriorProps) {
   return (
     <ShopInteriorZone zone={zone} floorColor="#26201c" fillColor="#fff4e6" fillIntensity={22}>
-      <Text
-        position={[0, 3.4, -6.4]}
-        fontSize={0.55}
-        anchorX="center"
-        anchorY="middle"
-        color={zone.accent}
-        outlineWidth={0.02}
-        outlineColor="#0c0a09"
-      >
-        FITTING ROOM
-      </Text>
-
       {/* Three-panel mirror at the back. */}
       {[-1.2, 0, 1.2].map((x, i) => (
         <mesh key={x} position={[x, 1.6, -6.5]} rotation={[0, i === 0 ? 0.25 : i === 2 ? -0.25 : 0, 0]} castShadow>

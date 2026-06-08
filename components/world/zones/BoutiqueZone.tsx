@@ -1,6 +1,5 @@
 "use client";
 
-import { Text } from "@react-three/drei";
 import { ShopInteriorZone, type ZoneInteriorProps } from "@/components/world/zones/ShopInteriorZone";
 import { Hotspot } from "@/components/world/Hotspot";
 import { productsForStore } from "@/lib/catalog";
@@ -30,19 +29,6 @@ export function BoutiqueZone({ zone }: ZoneInteriorProps) {
 
   return (
     <ShopInteriorZone zone={zone} floorColor="#2a2422" fillColor="#fff1df" fillIntensity={20}>
-      {/* Brand wall sign at the back of the room. */}
-      <Text
-        position={[0, 3.4, -6.4]}
-        fontSize={0.6}
-        anchorX="center"
-        anchorY="middle"
-        color={zone.accent}
-        outlineWidth={0.02}
-        outlineColor="#0c0a09"
-      >
-        {zone.label.toUpperCase()}
-      </Text>
-
       <Rack position={[-5.2, 0, -4]} color={zone.accent} />
       <Rack position={[5.2, 0, -4]} color={zone.color} />
 

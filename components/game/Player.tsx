@@ -20,12 +20,16 @@ const GRAVITY = 18;
 const JUMP_VELOCITY = 6.2;
 const TURN_RATE = 13;
 
-const CAM_DISTANCE = 3.3;
-const CAM_DISTANCE_INDOOR = 1.7;
-const CAM_HEIGHT = 1.85;
-const CAM_LERP = 4.5;
+const CAM_DISTANCE = 3.6;
+const CAM_DISTANCE_INDOOR = 2.6;
+const CAM_TARGET_Y = 1.35;
+const CAM_LERP = 6;
 const CAM_DIST_LERP = 3;
-const YAW_LERP = 3.2;
+// Look controls (WASD): how fast the camera yaws/pitches, in rad/sec.
+const LOOK_YAW_RATE = 2.3;
+const LOOK_PITCH_RATE = 1.9;
+const PITCH_MIN = -0.5;
+const PITCH_MAX = 1.0;
 
 export interface PlayerMotion {
   moving: boolean;
@@ -60,6 +64,7 @@ export function Player({ inputRef }: PlayerProps) {
   const pos = useRef(new THREE.Vector3(0, 0, 0));
   const heading = useRef(Math.PI);
   const camYaw = useRef(Math.PI);
+  const camPitch = useRef(0.08);
   const vy = useRef(0);
   const speed = useRef(0);
   const motion = useRef<PlayerMotion>({ moving: false, speed: 0 });
@@ -69,6 +74,13 @@ export function Player({ inputRef }: PlayerProps) {
   useFrame((state, rawDelta) => {
     const dt = Math.min(rawDelta, 0.05);
     const input = inputRef.current;
+
+    // WASD aims the camera (yaw + pitch); arrows move the avatar.
+    camYaw.current += input.lookYaw * LOOK_YAW_RATE * dt;
+    camPitch.current = Math.max(
+      PITCH_MIN,
+      Math.min(PITCH_MAX, camPitch.current + input.lookPitch * LOOK_PITCH_RATE * dt),
+    );
 
     let fwd = input.forward;
     let strafe = input.right;
@@ -127,19 +139,23 @@ export function Player({ inputRef }: PlayerProps) {
     playerPosition.copy(pos.current);
     playerHeading.value = heading.current;
 
-    // Trailing follow camera: yaw eases toward the avatar's heading.
-    camYaw.current = lerpAngle(camYaw.current, heading.current, Math.min(1, dt * YAW_LERP));
+    // Orbit follow camera driven by the manual yaw/pitch from WASD. Pitch lowers
+    // the camera so the view tilts up toward the ceiling / sky.
     const inside = interiorZoneAt(pos.current) !== null;
     const targetDist = inside ? CAM_DISTANCE_INDOOR : CAM_DISTANCE;
     camDistance.current += (targetDist - camDistance.current) * Math.min(1, dt * CAM_DIST_LERP);
     const ccy = camYaw.current;
+    const cp = camPitch.current;
+    const horiz = camDistance.current * Math.cos(cp);
+    const vert = camDistance.current * Math.sin(cp);
+    const targetY = pos.current.y + CAM_TARGET_Y;
     const desired = scratch.current.set(
-      pos.current.x - Math.sin(ccy) * camDistance.current,
-      pos.current.y + CAM_HEIGHT,
-      pos.current.z - Math.cos(ccy) * camDistance.current,
+      pos.current.x - Math.sin(ccy) * horiz,
+      Math.max(0.35, targetY - vert),
+      pos.current.z - Math.cos(ccy) * horiz,
     );
     state.camera.position.lerp(desired, Math.min(1, dt * CAM_LERP));
-    state.camera.lookAt(pos.current.x, pos.current.y + 1.1, pos.current.z);
+    state.camera.lookAt(pos.current.x, targetY, pos.current.z);
   });
 
   return (

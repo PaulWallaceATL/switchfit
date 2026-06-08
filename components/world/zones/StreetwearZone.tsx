@@ -1,6 +1,5 @@
 "use client";
 
-import { Text } from "@react-three/drei";
 import { ShopInteriorZone, type ZoneInteriorProps } from "@/components/world/zones/ShopInteriorZone";
 import { Hotspot } from "@/components/world/Hotspot";
 import { productsForStore } from "@/lib/catalog";
@@ -28,19 +27,6 @@ function CrateStack({ position, color }: { position: [number, number, number]; c
 export function StreetwearZone({ zone }: ZoneInteriorProps) {
   return (
     <ShopInteriorZone zone={zone} floorColor="#101010" fillColor="#dfe7ff" fillIntensity={14}>
-      {/* Neon brand sign. */}
-      <Text
-        position={[0, 3.4, -6.4]}
-        fontSize={0.7}
-        anchorX="center"
-        anchorY="middle"
-        color={zone.accent}
-        outlineWidth={0.03}
-        outlineColor={zone.color}
-      >
-        {zone.label.toUpperCase()}
-      </Text>
-
       {/* Neon under-glow strip along the back wall. */}
       <mesh position={[0, 0.1, -6.7]}>
         <boxGeometry args={[10, 0.08, 0.08]} />

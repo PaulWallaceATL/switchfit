@@ -8,11 +8,20 @@ import { LAYOUT, PODIUM_SLOTS_LOCAL } from "@/lib/stores";
 import { productsForStore, type Product } from "@/lib/catalog";
 import { useGameStore } from "@/lib/game/store";
 import type { Zone } from "@/lib/game/types";
+import {
+  ClothingRack,
+  ShelfUnit,
+  Counter,
+  Rug,
+  PottedPlant,
+} from "@/components/world/StoreFixtures";
 
 const { width: W, depth: D, wallThickness: T } = LAYOUT;
 const CEILING_Y = 4.8;
 const iw = W - T * 2;
 const id = D - T * 2;
+const hx = iw / 2;
+const hz = id / 2;
 
 export interface ZoneInteriorProps {
   zone: Zone;
@@ -193,6 +202,45 @@ export function ShopInteriorZone({
         if (!slot) return null;
         return <PodiumDisplay key={product.id} product={product} slot={slot} accent={zone.accent} />;
       })}
+
+      {/* --- Furnishings: racks, shelving, counter, rug & greenery --- */}
+
+      {/* A warm rug to ground the central display cluster. */}
+      <Rug position={[0, 0.04, -3]} size={[7.5, 8]} accent={zone.accent} />
+
+      {/* Long clothing racks running along each side wall. */}
+      <ClothingRack position={[-hx + 0.7, 0.04, -1.5]} rotation={Math.PI / 2} length={6.5} count={11} seed={1} />
+      <ClothingRack position={[hx - 0.7, 0.04, -1.5]} rotation={Math.PI / 2} length={6.5} count={11} seed={6} />
+      {/* Shorter racks closer to the entrance. */}
+      <ClothingRack position={[-hx + 0.7, 0.04, 4.4]} rotation={Math.PI / 2} length={2.8} count={5} seed={3} />
+      <ClothingRack position={[hx - 0.7, 0.04, 4.4]} rotation={Math.PI / 2} length={2.8} count={5} seed={8} />
+
+      {/* Stocked shelving along the back wall, flanking the centre podium. */}
+      <ShelfUnit position={[-3.4, 0.04, -hz + 0.5]} seed={2} />
+      <ShelfUnit position={[3.4, 0.04, -hz + 0.5]} seed={7} />
+
+      {/* Cashier counter in the front corner. */}
+      <Counter position={[hx - 1.3, 0.04, hz - 1.6]} rotation={Math.PI} accent={zone.accent} />
+
+      {/* Greenery in the corners for warmth. */}
+      <PottedPlant position={[-hx + 0.9, 0.04, hz - 1.2]} scale={0.95} />
+      <PottedPlant position={[-hx + 0.9, 0.04, -hz + 1.1]} scale={0.85} />
+      <PottedPlant position={[hx - 0.9, 0.04, -hz + 1.1]} scale={0.9} />
+
+      {/* Brand sign on the back wall. */}
+      <Text
+        position={[0, 3.5, -hz + 0.2]}
+        fontSize={0.6}
+        maxWidth={iw - 1}
+        textAlign="center"
+        anchorX="center"
+        anchorY="middle"
+        color={zone.accent}
+        outlineWidth={0.015}
+        outlineColor="#0c0a09"
+      >
+        {zone.label.toUpperCase()}
+      </Text>
 
       {children}
     </group>
