@@ -8,7 +8,7 @@ import { Mannequin } from "@/components/Mannequin";
 import type { Measurements, WardrobeItem } from "@/lib/measurements";
 import type { Gender } from "@/lib/body";
 import type { InputState } from "@/components/game/input";
-import { resolveColliders, storeAtPoint } from "@/components/game/collision";
+import { nearestProduct, resolveColliders, storeAtPoint } from "@/components/game/collision";
 
 const PLAYER_RADIUS = 0.35;
 
@@ -20,8 +20,10 @@ const JUMP_VELOCITY = 6.2;
 const TURN_RATE = 11;
 
 const CAM_DISTANCE = 3.3;
+const CAM_DISTANCE_INDOOR = 1.7;
 const CAM_HEIGHT = 1.85;
 const CAM_LERP = 4.5;
+const CAM_DIST_LERP = 3;
 const YAW_LERP = 3.2;
 
 export interface PlayerMotion {
@@ -37,6 +39,8 @@ interface PlayerProps {
   skinTone: string;
   /** Fired once when the avatar walks into a storefront's doorway. */
   onEnterStore?: (storeId: string) => void;
+  /** Fired when the closest in-reach product changes (null when none). */
+  onNearProduct?: (productId: string | null) => void;
 }
 
 /** Returns `a` rotated toward `b` by fraction `t`, taking the shortest path. */
@@ -59,6 +63,7 @@ export function Player({
   gender,
   skinTone,
   onEnterStore,
+  onNearProduct,
 }: PlayerProps) {
   const group = useRef<THREE.Group>(null);
   const pos = useRef(new THREE.Vector3(0, 0, 0));
@@ -69,6 +74,8 @@ export function Player({
   const motion = useRef<PlayerMotion>({ moving: false, speed: 0 });
   const scratch = useRef(new THREE.Vector3());
   const currentStore = useRef<string | null>(null);
+  const currentProduct = useRef<string | null>(null);
+  const camDistance = useRef(CAM_DISTANCE);
 
   useFrame((state, rawDelta) => {
     const dt = Math.min(rawDelta, 0.05);
@@ -127,6 +134,13 @@ export function Player({
       if (store) onEnterStore?.(store);
     }
 
+    // Surface the closest product when standing near a podium.
+    const product = nearestProduct(pos.current);
+    if (product !== currentProduct.current) {
+      currentProduct.current = product;
+      onNearProduct?.(product);
+    }
+
     if (group.current) {
       group.current.position.copy(pos.current);
       group.current.rotation.y = heading.current;
@@ -137,11 +151,14 @@ export function Player({
 
     // Trailing follow camera: yaw eases toward the avatar's heading.
     camYaw.current = lerpAngle(camYaw.current, heading.current, Math.min(1, dt * YAW_LERP));
+    // Pull the camera in tight while inside a store so it doesn't clip the walls.
+    const targetDist = store ? CAM_DISTANCE_INDOOR : CAM_DISTANCE;
+    camDistance.current += (targetDist - camDistance.current) * Math.min(1, dt * CAM_DIST_LERP);
     const ccy = camYaw.current;
     const desired = scratch.current.set(
-      pos.current.x - Math.sin(ccy) * CAM_DISTANCE,
+      pos.current.x - Math.sin(ccy) * camDistance.current,
       pos.current.y + CAM_HEIGHT,
-      pos.current.z - Math.cos(ccy) * CAM_DISTANCE,
+      pos.current.z - Math.cos(ccy) * camDistance.current,
     );
     state.camera.position.lerp(desired, Math.min(1, dt * CAM_LERP));
     state.camera.lookAt(pos.current.x, pos.current.y + 1.1, pos.current.z);

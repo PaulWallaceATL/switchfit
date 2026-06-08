@@ -46,7 +46,7 @@ export const STORES: Store[] = [
   {
     id: "fitting-room",
     name: "The Fitting Room",
-    tagline: "Scan your body for a perfect fit.",
+    tagline: "Everyday essentials, dialed to your fit.",
     color: "#7c2d12",
     accent: "#fdba74",
     category: "fitting-room",
@@ -54,7 +54,7 @@ export const STORES: Store[] = [
   {
     id: "color-studio",
     name: "Color Studio",
-    tagline: "Find your tone.",
+    tagline: "Bold colors & statement pieces.",
     color: "#831843",
     accent: "#f9a8d4",
     category: "color-studio",
@@ -62,7 +62,7 @@ export const STORES: Store[] = [
   {
     id: "outerwear",
     name: "Northwind Outerwear",
-    tagline: "Coats & jackets — coming soon.",
+    tagline: "Coats & jackets for any forecast.",
     color: "#0f3a4d",
     accent: "#7dd3fc",
     category: "outerwear",
@@ -70,7 +70,7 @@ export const STORES: Store[] = [
   {
     id: "accessories",
     name: "Trinket & Co.",
-    tagline: "Accessories — coming soon.",
+    tagline: "Finishing touches & extras.",
     color: "#4c1d95",
     accent: "#c4b5fd",
     category: "accessories",
@@ -80,18 +80,33 @@ export const STORES: Store[] = [
 /** Arc + building dimensions, in world units. */
 export const LAYOUT = {
   /** Distance from the origin to each building center. */
-  radius: 22,
-  /** Total angular spread of the semicircle, in radians (~160deg). */
-  spread: (160 * Math.PI) / 180,
-  width: 7,
-  depth: 7,
+  radius: 30,
+  /** Total angular spread of the semicircle, in radians (~170deg). */
+  spread: (170 * Math.PI) / 180,
+  width: 14,
+  depth: 18,
   height: 40,
   wallThickness: 0.3,
-  doorWidth: 2.6,
-  doorHeight: 3.2,
+  doorWidth: 3.4,
+  doorHeight: 3.4,
   /** Spacing between layered floor bands. */
   floorHeight: 3.2,
 } as const;
+
+/**
+ * Local XZ offsets of the product podiums inside each store. The doorway is at
+ * local +z, so podiums sit deeper in the room (negative z) and face the
+ * entering avatar. Every store has the same slot layout; the catalog decides
+ * which product fills each slot.
+ */
+export const PODIUM_SLOTS_LOCAL: { x: number; z: number }[] = [
+  { x: -4, z: -3.5 },
+  { x: 0, z: -6 },
+  { x: 4, z: -3.5 },
+];
+
+/** Half-extent of a podium's collision/footprint box. */
+export const PODIUM_HALF = 0.7;
 
 /** A wall footprint in a building's local XZ frame (origin at building center). */
 export interface WallRect {
@@ -139,7 +154,7 @@ export function getBuildingTransforms(): BuildingTransform[] {
 }
 
 /** Builds the four perimeter walls with a gap in the front for the doorway. */
-function buildWalls(): WallRect[] {
+function buildPerimeterWalls(): WallRect[] {
   const { width: W, depth: D, wallThickness: t, doorWidth: dw } = LAYOUT;
   const hw = W / 2;
   const hd = D / 2;
@@ -159,7 +174,15 @@ function buildWalls(): WallRect[] {
   ];
 }
 
-const WALLS = buildWalls();
+/** Podium footprints (so the avatar can't walk through the displays). */
+const PODIUM_RECTS: WallRect[] = PODIUM_SLOTS_LOCAL.map((s) => ({
+  cx: s.x,
+  cz: s.z,
+  hx: PODIUM_HALF,
+  hz: PODIUM_HALF,
+}));
+
+const WALLS = [...buildPerimeterWalls(), ...PODIUM_RECTS];
 
 export const STORE_COLLIDERS: BuildingCollider[] = getBuildingTransforms().map((b) => ({
   ...b,
@@ -173,6 +196,18 @@ export const STORE_TRIGGERS: StoreTrigger[] = getBuildingTransforms().map((b) =>
     ...b,
     storeId: b.store.id,
     // A box just inside the doorway.
-    rect: { cx: 0, cz: hd - 1.4, hx: dw / 2, hz: 1.2 },
+    rect: { cx: 0, cz: hd - 1.6, hx: dw / 2, hz: 1.3 },
   };
 });
+
+/** Rotates a building-local XZ point into world space (matches the group's Y rotation). */
+export function localToWorld(
+  center: [number, number],
+  rotationY: number,
+  lx: number,
+  lz: number,
+): [number, number] {
+  const cos = Math.cos(rotationY);
+  const sin = Math.sin(rotationY);
+  return [center[0] + lx * cos + lz * sin, center[1] - lx * sin + lz * cos];
+}

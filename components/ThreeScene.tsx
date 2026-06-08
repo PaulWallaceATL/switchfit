@@ -5,6 +5,7 @@ import { Canvas } from "@react-three/fiber";
 import { Grid } from "@react-three/drei";
 import { Player } from "@/components/game/Player";
 import { Storefronts } from "@/components/game/Storefronts";
+import { StoreInterior } from "@/components/game/StoreInterior";
 import { MobileControls } from "@/components/game/MobileControls";
 import { createInputState, useCoarsePointer, useKeyboardControls } from "@/components/game/input";
 import type { Measurements, WardrobeItem } from "@/lib/measurements";
@@ -16,6 +17,8 @@ interface ThreeSceneProps {
   gender: Gender;
   skinTone: string;
   onEnterStore?: (storeId: string) => void;
+  onNearProduct?: (productId: string | null) => void;
+  activeProductId?: string | null;
 }
 
 export default function ThreeScene({
@@ -24,6 +27,8 @@ export default function ThreeScene({
   gender,
   skinTone,
   onEnterStore,
+  onNearProduct,
+  activeProductId = null,
 }: ThreeSceneProps) {
   const inputRef = useRef(createInputState());
   const coarse = useCoarsePointer();
@@ -63,9 +68,11 @@ export default function ThreeScene({
           gender={gender}
           skinTone={skinTone}
           onEnterStore={onEnterStore}
+          onNearProduct={onNearProduct}
         />
 
         <Storefronts />
+        <StoreInterior activeProductId={activeProductId} />
 
         {/* Ground */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>

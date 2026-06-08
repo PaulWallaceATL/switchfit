@@ -4,6 +4,10 @@ import {
   STORE_TRIGGERS,
   type WallRect,
 } from "@/lib/stores";
+import { PODIUMS } from "@/lib/catalog";
+
+/** How close (world units) the avatar must be to a podium to inspect a product. */
+const PRODUCT_REACH = 2.4;
 
 /**
  * Transforms a world XZ point into a building's local frame (inverse of the
@@ -86,6 +90,22 @@ export function resolveColliders(pos: THREE.Vector3, radius: number): void {
     pos.x = cx + wx;
     pos.z = cz + wz;
   }
+}
+
+/** Returns the id of the closest product podium within reach, or null. */
+export function nearestProduct(pos: THREE.Vector3): string | null {
+  let closest: string | null = null;
+  let bestDist = PRODUCT_REACH * PRODUCT_REACH;
+  for (const podium of PODIUMS) {
+    const dx = pos.x - podium.world[0];
+    const dz = pos.z - podium.world[1];
+    const distSq = dx * dx + dz * dz;
+    if (distSq < bestDist) {
+      bestDist = distSq;
+      closest = podium.product.id;
+    }
+  }
+  return closest;
 }
 
 /** Returns the id of the store whose doorway trigger contains the point, if any. */
