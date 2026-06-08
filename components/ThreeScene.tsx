@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Grid } from "@react-three/drei";
 import { Player } from "@/components/game/Player";
+import { Storefronts } from "@/components/game/Storefronts";
 import { MobileControls } from "@/components/game/MobileControls";
 import { createInputState, useCoarsePointer, useKeyboardControls } from "@/components/game/input";
 import type { Measurements, WardrobeItem } from "@/lib/measurements";
@@ -14,6 +15,7 @@ interface ThreeSceneProps {
   selectedItems: WardrobeItem[];
   gender: Gender;
   skinTone: string;
+  onEnterStore?: (storeId: string) => void;
 }
 
 export default function ThreeScene({
@@ -21,6 +23,7 @@ export default function ThreeScene({
   selectedItems,
   gender,
   skinTone,
+  onEnterStore,
 }: ThreeSceneProps) {
   const inputRef = useRef(createInputState());
   const coarse = useCoarsePointer();
@@ -59,7 +62,10 @@ export default function ThreeScene({
           selectedItems={selectedItems}
           gender={gender}
           skinTone={skinTone}
+          onEnterStore={onEnterStore}
         />
+
+        <Storefronts />
 
         {/* Ground */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>

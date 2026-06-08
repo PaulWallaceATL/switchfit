@@ -8,6 +8,9 @@ import { Mannequin } from "@/components/Mannequin";
 import type { Measurements, WardrobeItem } from "@/lib/measurements";
 import type { Gender } from "@/lib/body";
 import type { InputState } from "@/components/game/input";
+import { resolveColliders, storeAtPoint } from "@/components/game/collision";
+
+const PLAYER_RADIUS = 0.35;
 
 const WALK_SPEED = 1.7;
 const RUN_SPEED = 3.8;
@@ -32,6 +35,8 @@ interface PlayerProps {
   selectedItems: WardrobeItem[];
   gender: Gender;
   skinTone: string;
+  /** Fired once when the avatar walks into a storefront's doorway. */
+  onEnterStore?: (storeId: string) => void;
 }
 
 /** Returns `a` rotated toward `b` by fraction `t`, taking the shortest path. */
@@ -47,7 +52,14 @@ function lerpAngle(a: number, b: number, t: number): number {
  * camera-relative heading every frame, drives a trailing follow camera, and
  * feeds locomotion data to the Mannequin for its walk/run animation.
  */
-export function Player({ inputRef, measurements, selectedItems, gender, skinTone }: PlayerProps) {
+export function Player({
+  inputRef,
+  measurements,
+  selectedItems,
+  gender,
+  skinTone,
+  onEnterStore,
+}: PlayerProps) {
   const group = useRef<THREE.Group>(null);
   const pos = useRef(new THREE.Vector3(0, 0, 0));
   const heading = useRef(Math.PI); // face toward the starting camera
@@ -56,6 +68,7 @@ export function Player({ inputRef, measurements, selectedItems, gender, skinTone
   const speed = useRef(0);
   const motion = useRef<PlayerMotion>({ moving: false, speed: 0 });
   const scratch = useRef(new THREE.Vector3());
+  const currentStore = useRef<string | null>(null);
 
   useFrame((state, rawDelta) => {
     const dt = Math.min(rawDelta, 0.05);
@@ -101,6 +114,17 @@ export function Player({ inputRef, measurements, selectedItems, gender, skinTone
     if (pos.current.y < 0) {
       pos.current.y = 0;
       vy.current = 0;
+    }
+
+    // Block the avatar against the storefront walls (doorways stay open).
+    resolveColliders(pos.current, PLAYER_RADIUS);
+
+    // Fire on the rising edge of entering a doorway trigger; require leaving
+    // before the same (or another) store can trigger again.
+    const store = storeAtPoint(pos.current);
+    if (store !== currentStore.current) {
+      currentStore.current = store;
+      if (store) onEnterStore?.(store);
     }
 
     if (group.current) {

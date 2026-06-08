@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { Sidebar } from "@/components/Sidebar";
+import { StorePanel } from "@/components/StorePanel";
 import { Onboarding, type ScanMeta } from "@/components/Scanner/Onboarding";
 import {
   DEFAULT_MEASUREMENTS,
@@ -38,6 +39,7 @@ export default function Home() {
   const [scanHistory, setScanHistory] = useState<ScanRecord[]>([]);
   const [gender, setGender] = useState<Gender>(DEFAULT_GENDER);
   const [skinTone, setSkinTone] = useState<string>(DEFAULT_SKIN_TONE);
+  const [activeStore, setActiveStore] = useState<string | null>(null);
 
   // Hydrate from the session once on mount (after SSR to avoid mismatches).
   const hydrated = useRef(false);
@@ -135,6 +137,16 @@ export default function Home() {
           selectedItems={selectedItems}
           gender={gender}
           skinTone={skinTone}
+          onEnterStore={setActiveStore}
+        />
+        <StorePanel
+          storeId={activeStore}
+          selectedIds={selectedIds}
+          skinTone={skinTone}
+          onToggleItem={handleToggleItem}
+          onStartScan={() => setScannerOpen(true)}
+          onSkinToneChange={setSkinTone}
+          onClose={() => setActiveStore(null)}
         />
       </div>
       <Onboarding
