@@ -150,19 +150,41 @@ export function Mannequin({
   const pants = useMemo(() => selectedItems.find((i) => i.type === "pants"), [selectedItems]);
 
   const skinMat = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: skinTone, roughness: 0.66, metalness: 0 }),
+    () =>
+      new THREE.MeshPhysicalMaterial({
+        color: skinTone,
+        roughness: 0.62,
+        metalness: 0,
+        // A soft sheen + faint clearcoat reads as living skin, not matte clay.
+        sheen: 0.4,
+        sheenColor: new THREE.Color("#ff9d7a"),
+        sheenRoughness: 0.7,
+        clearcoat: 0.12,
+        clearcoatRoughness: 0.55,
+      }),
     [skinTone],
   );
+  const lipMat = useMemo(() => {
+    const base = new THREE.Color(skinTone);
+    const hsl = { h: 0, s: 0, l: 0 };
+    base.getHSL(hsl);
+    const lip = new THREE.Color().setHSL(0.02, Math.min(0.55, hsl.s + 0.3), Math.max(0.32, hsl.l - 0.12));
+    return new THREE.MeshStandardMaterial({ color: lip, roughness: 0.45 });
+  }, [skinTone]);
   const hairMat = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: HAIR_COLOR, roughness: 0.85, metalness: 0.05 }),
+    () => new THREE.MeshStandardMaterial({ color: HAIR_COLOR, roughness: 0.78, metalness: 0.08 }),
     [],
   );
   const eyeWhiteMat = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: "#f6f3ee", roughness: 0.35 }),
+    () => new THREE.MeshStandardMaterial({ color: "#f6f3ee", roughness: 0.25 }),
     [],
   );
   const irisMat = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: "#4a342a", roughness: 0.4 }),
+    () => new THREE.MeshStandardMaterial({ color: "#4a342a", roughness: 0.3, metalness: 0.1 }),
+    [],
+  );
+  const pupilMat = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: "#120b08", roughness: 0.2 }),
     [],
   );
   const shoeMat = useMemo(
@@ -208,11 +230,11 @@ export function Mannequin({
     const moving = !!m?.moving;
     const speed = m?.speed ?? 0;
 
-    phase.current += dt * (moving ? 5 + speed * 1.6 : 0);
-    const target = moving ? Math.min(0.6, 0.18 + speed * 0.12) : 0;
+    phase.current += dt * (moving ? 4 + speed * 0.9 : 0);
+    const target = moving ? Math.min(0.62, 0.2 + speed * 0.05) : 0;
     amplitude.current += (target - amplitude.current) * Math.min(1, dt * 8);
     const amp = amplitude.current;
-    const targetLean = moving ? Math.min(speed / 3.8, 1) * 0.07 : 0;
+    const targetLean = moving ? Math.min(speed / 9, 1) * 0.09 : 0;
     lean.current += (targetLean - lean.current) * Math.min(1, dt * 6);
 
     const swing = Math.sin(phase.current) * amp;
@@ -424,6 +446,23 @@ export function Mannequin({
           <mesh position={[0, -0.012, 0.108]} scale={[0.7, 1.1, 0.9]} material={skinMat}>
             <sphereGeometry args={[0.02, 14, 14]} />
           </mesh>
+          {/* Lips */}
+          <mesh position={[0, -0.056, 0.1]} scale={[1.5, 0.5, 0.7]} material={lipMat}>
+            <sphereGeometry args={[0.018, 16, 12]} />
+          </mesh>
+          {/* Ears */}
+          {[-1, 1].map((side) => (
+            <mesh
+              key={`ear-${side}`}
+              position={[side * 0.106, -0.004, 0.008]}
+              scale={[0.5, 1, 0.72]}
+              rotation={[0, side * 0.3, 0]}
+              material={skinMat}
+              castShadow
+            >
+              <sphereGeometry args={[0.028, 16, 16]} />
+            </mesh>
+          ))}
           {/* Eyes */}
           {[-1, 1].map((side) => (
             <group key={`eye-${side}`} position={[side * 0.042, 0.012, 0.094]}>
@@ -432,6 +471,14 @@ export function Mannequin({
               </mesh>
               <mesh position={[0, 0, 0.012]} material={irisMat}>
                 <sphereGeometry args={[0.0095, 14, 14]} />
+              </mesh>
+              {/* Pupil */}
+              <mesh position={[0, 0, 0.017]} material={pupilMat}>
+                <sphereGeometry args={[0.0048, 12, 12]} />
+              </mesh>
+              {/* Upper lid for a softer, less wide-eyed look */}
+              <mesh position={[0, 0.012, 0.01]} scale={[1.3, 0.5, 0.8]} material={skinMat}>
+                <sphereGeometry args={[0.016, 16, 12]} />
               </mesh>
               {/* Brow */}
               <mesh position={[0, 0.026, 0.004]} rotation={[0, 0, side * -0.12]} material={hairMat}>

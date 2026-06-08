@@ -13,12 +13,12 @@ import { useSelectedItems } from "@/lib/game/selectors";
 
 const PLAYER_RADIUS = 0.35;
 
-const WALK_SPEED = 1.7;
-const RUN_SPEED = 3.8;
-const ACCEL = 9;
+const WALK_SPEED = 4.4;
+const RUN_SPEED = 9;
+const ACCEL = 14;
 const GRAVITY = 18;
 const JUMP_VELOCITY = 6.2;
-const TURN_RATE = 11;
+const TURN_RATE = 13;
 
 const CAM_DISTANCE = 3.3;
 const CAM_DISTANCE_INDOOR = 1.7;
@@ -80,9 +80,10 @@ export function Player({ inputRef }: PlayerProps) {
     }
 
     // Build a movement direction relative to where the camera is pointing.
+    // Strafe uses the left-hand perpendicular so pressing left actually goes left.
     const cy = camYaw.current;
-    const moveX = Math.sin(cy) * fwd + Math.cos(cy) * strafe;
-    const moveZ = Math.cos(cy) * fwd - Math.sin(cy) * strafe;
+    const moveX = Math.sin(cy) * fwd - Math.cos(cy) * strafe;
+    const moveZ = Math.cos(cy) * fwd + Math.sin(cy) * strafe;
 
     let targetSpeed = 0;
     if (moving) {
