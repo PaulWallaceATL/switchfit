@@ -18,6 +18,7 @@ import {
   type ScanMethod,
   type ScanRecord,
 } from "@/lib/session";
+import { DEFAULT_GENDER, DEFAULT_SKIN_TONE, type Gender } from "@/lib/body";
 
 const ThreeScene = dynamic(() => import("@/components/ThreeScene"), {
   ssr: false,
@@ -35,6 +36,8 @@ export default function Home() {
   const [scanned, setScanned] = useState(false);
   const [lastMethod, setLastMethod] = useState<ScanMethod | null>(null);
   const [scanHistory, setScanHistory] = useState<ScanRecord[]>([]);
+  const [gender, setGender] = useState<Gender>(DEFAULT_GENDER);
+  const [skinTone, setSkinTone] = useState<string>(DEFAULT_SKIN_TONE);
 
   // Hydrate from the session once on mount (after SSR to avoid mismatches).
   const hydrated = useRef(false);
@@ -46,6 +49,8 @@ export default function Home() {
       setScanned(saved.scanned);
       setLastMethod(saved.lastMethod);
       setScanHistory(saved.scanHistory);
+      setGender(saved.gender);
+      setSkinTone(saved.skinTone);
     }
     hydrated.current = true;
   }, []);
@@ -53,8 +58,16 @@ export default function Home() {
   // Persist to the session on any change (skip the initial pre-hydration render).
   useEffect(() => {
     if (!hydrated.current) return;
-    saveSession({ measurements, selectedIds, scanned, lastMethod, scanHistory });
-  }, [measurements, selectedIds, scanned, lastMethod, scanHistory]);
+    saveSession({
+      measurements,
+      selectedIds,
+      scanned,
+      lastMethod,
+      scanHistory,
+      gender,
+      skinTone,
+    });
+  }, [measurements, selectedIds, scanned, lastMethod, scanHistory, gender, skinTone]);
 
   const handleMeasurementChange = useCallback((key: MeasurementKey, value: number) => {
     setMeasurements((prev) => ({ ...prev, [key]: value }));
@@ -107,13 +120,22 @@ export default function Home() {
         measurements={measurements}
         selectedIds={selectedIds}
         scanned={scanned}
+        gender={gender}
+        skinTone={skinTone}
         onMeasurementChange={handleMeasurementChange}
         onToggleItem={handleToggleItem}
         onReset={handleReset}
         onStartScan={() => setScannerOpen(true)}
+        onGenderChange={setGender}
+        onSkinToneChange={setSkinTone}
       />
       <div className="relative flex-1">
-        <ThreeScene measurements={measurements} selectedItems={selectedItems} />
+        <ThreeScene
+          measurements={measurements}
+          selectedItems={selectedItems}
+          gender={gender}
+          skinTone={skinTone}
+        />
       </div>
       <Onboarding
         open={scannerOpen}

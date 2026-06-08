@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Ruler, RotateCcw, Shirt, Check, ScanLine, LogIn, LogOut } from "lucide-react";
+import { Ruler, RotateCcw, Shirt, Check, ScanLine, LogIn, LogOut, User } from "lucide-react";
 import {
   MEASUREMENT_RANGES,
   WARDROBE,
@@ -9,6 +9,7 @@ import {
   type Measurements,
   type WardrobeItem,
 } from "@/lib/measurements";
+import { SKIN_TONES, type Gender } from "@/lib/body";
 import { FitScore } from "@/components/FitScore";
 import { useAuth } from "@/lib/auth/MockAuthProvider";
 
@@ -16,20 +17,33 @@ interface SidebarProps {
   measurements: Measurements;
   selectedIds: string[];
   scanned: boolean;
+  gender: Gender;
+  skinTone: string;
   onMeasurementChange: (key: MeasurementKey, value: number) => void;
   onToggleItem: (item: WardrobeItem) => void;
   onReset: () => void;
   onStartScan: () => void;
+  onGenderChange: (gender: Gender) => void;
+  onSkinToneChange: (color: string) => void;
 }
+
+const GENDERS: { value: Gender; label: string }[] = [
+  { value: "male", label: "Male" },
+  { value: "female", label: "Female" },
+];
 
 export function Sidebar({
   measurements,
   selectedIds,
   scanned,
+  gender,
+  skinTone,
   onMeasurementChange,
   onToggleItem,
   onReset,
   onStartScan,
+  onGenderChange,
+  onSkinToneChange,
 }: SidebarProps) {
   const { user, logout } = useAuth();
 
@@ -76,6 +90,61 @@ export function Sidebar({
         <ScanLine className="h-4 w-4" />
         Start AI Scan
       </button>
+
+      {/* Appearance */}
+      <section className="flex flex-col gap-4">
+        <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-zinc-700">
+          <User className="h-4 w-4" />
+          Appearance
+        </h2>
+
+        <div className="flex flex-col gap-2">
+          <span className="text-xs font-medium text-zinc-500">Body type</span>
+          <div className="grid grid-cols-2 gap-2">
+            {GENDERS.map((g) => {
+              const active = gender === g.value;
+              return (
+                <button
+                  key={g.value}
+                  type="button"
+                  onClick={() => onGenderChange(g.value)}
+                  className={`rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
+                    active
+                      ? "border-zinc-900 bg-zinc-900 text-white"
+                      : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400"
+                  }`}
+                >
+                  {g.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <span className="text-xs font-medium text-zinc-500">Skin tone</span>
+          <div className="flex flex-wrap gap-2">
+            {SKIN_TONES.map((tone) => {
+              const active = skinTone === tone.color;
+              return (
+                <button
+                  key={tone.id}
+                  type="button"
+                  title={tone.label}
+                  aria-label={tone.label}
+                  onClick={() => onSkinToneChange(tone.color)}
+                  style={{ backgroundColor: tone.color }}
+                  className={`h-8 w-8 rounded-full transition-all ${
+                    active
+                      ? "ring-2 ring-zinc-900 ring-offset-2"
+                      : "ring-1 ring-black/10 hover:ring-zinc-400"
+                  }`}
+                />
+              );
+            })}
+          </div>
+        </div>
+      </section>
 
       {/* Measurements */}
       <section className="flex flex-col gap-4">

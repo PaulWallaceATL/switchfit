@@ -1,80 +1,170 @@
 "use client";
 
 import { useMemo } from "react";
+import * as THREE from "three";
+import { getBodyScale, type Measurements, type WardrobeItem } from "@/lib/measurements";
 import {
-  BODY_LAYOUT,
-  getBodyScale,
-  type Measurements,
-  type WardrobeItem,
-} from "@/lib/measurements";
+  buildTorsoProfile,
+  getBodyDims,
+  HAIR_COLOR,
+  type Gender,
+} from "@/lib/body";
 import { Clothing } from "@/components/Clothing";
-
-const SKIN_COLOR = "#d6c3b0";
 
 interface MannequinProps {
   measurements: Measurements;
   selectedItems: WardrobeItem[];
+  gender: Gender;
+  skinTone: string;
 }
 
-export function Mannequin({ measurements, selectedItems }: MannequinProps) {
-  const scale = useMemo(() => getBodyScale(measurements), [measurements]);
+/** A jointed arm built from a deltoid, upper arm, elbow, forearm and hand. */
+function Arm({
+  side,
+  shoulderHalf,
+  radius,
+  mat,
+}: {
+  side: number;
+  shoulderHalf: number;
+  radius: number;
+  mat: THREE.Material;
+}) {
+  return (
+    <group position={[side * shoulderHalf, 1.47, 0]} rotation={[0, 0, side * -0.07]}>
+      <mesh material={mat} castShadow>
+        <sphereGeometry args={[radius * 1.1, 20, 20]} />
+      </mesh>
+      <mesh position={[0, -0.17, 0]} material={mat} castShadow>
+        <cylinderGeometry args={[radius * 0.96, radius * 0.82, 0.32, 20]} />
+      </mesh>
+      <mesh position={[0, -0.33, 0]} material={mat} castShadow>
+        <sphereGeometry args={[radius * 0.82, 16, 16]} />
+      </mesh>
+      <mesh position={[0, -0.47, 0]} material={mat} castShadow>
+        <cylinderGeometry args={[radius * 0.8, radius * 0.6, 0.28, 20]} />
+      </mesh>
+      <mesh position={[0, -0.65, 0]} scale={[1, 1.35, 0.5]} material={mat} castShadow>
+        <sphereGeometry args={[radius * 0.92, 16, 16]} />
+      </mesh>
+    </group>
+  );
+}
 
-  // The pelvis blends waist and hips so both measurements shape the lower torso.
-  const lowerTorsoScale = scale.waist * 0.6 + scale.hips * 0.4;
+/** A jointed leg built from a thigh, knee, calf, ankle and foot. */
+function Leg({
+  side,
+  hipHalf,
+  radius,
+  mat,
+}: {
+  side: number;
+  hipHalf: number;
+  radius: number;
+  mat: THREE.Material;
+}) {
+  return (
+    <group position={[side * hipHalf, 0.92, 0]} rotation={[0, 0, side * 0.02]}>
+      <mesh position={[0, -0.21, 0]} material={mat} castShadow>
+        <cylinderGeometry args={[radius * 1.06, radius * 0.78, 0.44, 22]} />
+      </mesh>
+      <mesh position={[0, -0.44, 0]} material={mat} castShadow>
+        <sphereGeometry args={[radius * 0.72, 18, 18]} />
+      </mesh>
+      <mesh position={[0, -0.64, 0]} material={mat} castShadow>
+        <cylinderGeometry args={[radius * 0.78, radius * 0.5, 0.4, 22]} />
+      </mesh>
+      <mesh position={[0, -0.85, 0]} material={mat} castShadow>
+        <sphereGeometry args={[radius * 0.44, 14, 14]} />
+      </mesh>
+      <mesh position={[0, -0.88, 0.07]} material={mat} castShadow>
+        <boxGeometry args={[radius * 1.15, 0.06, 0.24]} />
+      </mesh>
+    </group>
+  );
+}
+
+export function Mannequin({ measurements, selectedItems, gender, skinTone }: MannequinProps) {
+  const scale = useMemo(() => getBodyScale(measurements), [measurements]);
+  const dims = useMemo(() => getBodyDims(scale, gender), [scale, gender]);
+  const profile = useMemo(() => buildTorsoProfile(scale, gender), [scale, gender]);
+
+  const skinMat = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: skinTone, roughness: 0.62, metalness: 0 }),
+    [skinTone],
+  );
+  const hairMat = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: HAIR_COLOR, roughness: 0.9, metalness: 0 }),
+    [],
+  );
 
   return (
     <group scale={[1, scale.height, 1]} position={[0, 0, 0]}>
-      {/* Head */}
-      <mesh position={[0, BODY_LAYOUT.head.y, 0]} castShadow>
-        <sphereGeometry args={[BODY_LAYOUT.head.radius, 32, 32]} />
-        <meshStandardMaterial color={SKIN_COLOR} roughness={0.7} />
+      {/* Torso: a smooth revolved silhouette, flattened front-to-back. */}
+      <mesh scale={[1, 1, dims.depth]} material={skinMat} castShadow receiveShadow>
+        <latheGeometry args={[profile, 48]} />
       </mesh>
 
-      {/* Neck */}
-      <mesh position={[0, BODY_LAYOUT.neck.y, 0]} castShadow>
-        <cylinderGeometry
-          args={[BODY_LAYOUT.neck.radius, BODY_LAYOUT.neck.radius, BODY_LAYOUT.neck.length, 24]}
-        />
-        <meshStandardMaterial color={SKIN_COLOR} roughness={0.7} />
-      </mesh>
+      {/* Bust (female) */}
+      {dims.bust > 0 &&
+        [-1, 1].map((side) => (
+          <mesh
+            key={`bust-${side}`}
+            position={[side * 0.062, 1.31, 0.082]}
+            scale={[1.15, 0.95, 0.78]}
+            material={skinMat}
+            castShadow
+          >
+            <sphereGeometry args={[0.057 * scale.chest, 18, 18]} />
+          </mesh>
+        ))}
 
-      {/* Upper torso (chest) */}
-      <mesh position={[0, BODY_LAYOUT.upperTorso.y, 0]} scale={[scale.chest, 1, scale.chest]} castShadow>
-        <capsuleGeometry args={[BODY_LAYOUT.upperTorso.radius, BODY_LAYOUT.upperTorso.length, 8, 24]} />
-        <meshStandardMaterial color={SKIN_COLOR} roughness={0.7} />
-      </mesh>
-
-      {/* Lower torso (waist / hips) */}
-      <mesh position={[0, BODY_LAYOUT.lowerTorso.y, 0]} scale={[lowerTorsoScale, 1, lowerTorsoScale]} castShadow>
-        <capsuleGeometry args={[BODY_LAYOUT.lowerTorso.radius, BODY_LAYOUT.lowerTorso.length, 8, 24]} />
-        <meshStandardMaterial color={SKIN_COLOR} roughness={0.7} />
-      </mesh>
+      {/* Seat / glutes */}
+      {[-1, 1].map((side) => (
+        <mesh
+          key={`seat-${side}`}
+          position={[side * 0.07, 0.93, -0.088]}
+          scale={[1.1, 1, 0.92]}
+          material={skinMat}
+          castShadow
+        >
+          <sphereGeometry args={[0.072 * scale.hips * dims.seat, 18, 18]} />
+        </mesh>
+      ))}
 
       {/* Arms */}
-      {[-1, 1].map((side) => (
-        <mesh
-          key={`arm-${side}`}
-          position={[side * BODY_LAYOUT.arm.offsetX, BODY_LAYOUT.arm.y, 0]}
-          scale={[scale.limb, 1, scale.limb]}
-          castShadow
-        >
-          <capsuleGeometry args={[BODY_LAYOUT.arm.radius, BODY_LAYOUT.arm.length, 8, 16]} />
-          <meshStandardMaterial color={SKIN_COLOR} roughness={0.7} />
-        </mesh>
-      ))}
+      <Arm side={-1} shoulderHalf={dims.shoulderHalf} radius={dims.armRadius} mat={skinMat} />
+      <Arm side={1} shoulderHalf={dims.shoulderHalf} radius={dims.armRadius} mat={skinMat} />
 
-      {/* Legs (driven by hips) */}
-      {[-1, 1].map((side) => (
-        <mesh
-          key={`leg-${side}`}
-          position={[side * BODY_LAYOUT.leg.offsetX, BODY_LAYOUT.leg.y, 0]}
-          scale={[scale.hips, 1, scale.hips]}
-          castShadow
-        >
-          <capsuleGeometry args={[BODY_LAYOUT.leg.radius, BODY_LAYOUT.leg.length, 8, 16]} />
-          <meshStandardMaterial color={SKIN_COLOR} roughness={0.7} />
+      {/* Legs */}
+      <Leg side={-1} hipHalf={dims.hipHalf} radius={dims.legRadius} mat={skinMat} />
+      <Leg side={1} hipHalf={dims.hipHalf} radius={dims.legRadius} mat={skinMat} />
+
+      {/* Neck */}
+      <mesh position={[0, 1.61, 0]} material={skinMat} castShadow>
+        <cylinderGeometry args={[0.05, 0.062, 0.09, 20]} />
+      </mesh>
+
+      {/* Head */}
+      <group position={[0, 1.73, 0.004]}>
+        <mesh material={skinMat} castShadow scale={[0.92, 1.08, 1]}>
+          <sphereGeometry args={[0.112, 32, 32]} />
         </mesh>
-      ))}
+        {/* Jaw / chin */}
+        <mesh position={[0, -0.062, 0.012]} scale={[0.82, 0.74, 0.86]} material={skinMat} castShadow>
+          <sphereGeometry args={[0.1, 24, 24]} />
+        </mesh>
+        {/* Hair cap — sits above the forehead so the face stays clear */}
+        <mesh position={[0, 0.03, -0.02]} scale={[1.03, 1, 1.07]} material={hairMat} castShadow>
+          <sphereGeometry args={[0.118, 28, 28, 0, Math.PI * 2, 0, Math.PI * 0.46]} />
+        </mesh>
+        {/* Longer hair mass falling behind the head for the female silhouette */}
+        {gender === "female" && (
+          <mesh position={[0, -0.07, -0.055]} scale={[0.86, 1.3, 0.62]} material={hairMat} castShadow>
+            <sphereGeometry args={[0.108, 24, 24]} />
+          </mesh>
+        )}
+      </group>
 
       {/* Clothing overlays */}
       {selectedItems.map((item) => (

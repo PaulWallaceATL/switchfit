@@ -1,4 +1,5 @@
 import { DEFAULT_MEASUREMENTS, type Measurements } from "@/lib/measurements";
+import { DEFAULT_GENDER, DEFAULT_SKIN_TONE, type Gender } from "@/lib/body";
 
 export type ScanMethod = "lidar" | "photo";
 
@@ -16,6 +17,8 @@ export interface SessionProfile {
   scanned: boolean;
   lastMethod: ScanMethod | null;
   scanHistory: ScanRecord[];
+  gender: Gender;
+  skinTone: string;
 }
 
 const STORAGE_KEY = "switchfit.session";
@@ -27,6 +30,8 @@ export const EMPTY_SESSION: SessionProfile = {
   scanned: false,
   lastMethod: null,
   scanHistory: [],
+  gender: DEFAULT_GENDER,
+  skinTone: DEFAULT_SKIN_TONE,
 };
 
 /**

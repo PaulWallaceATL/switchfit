@@ -4,13 +4,21 @@ import { Canvas } from "@react-three/fiber";
 import { OrbitControls, ContactShadows, Grid } from "@react-three/drei";
 import { Mannequin } from "@/components/Mannequin";
 import type { Measurements, WardrobeItem } from "@/lib/measurements";
+import type { Gender } from "@/lib/body";
 
 interface ThreeSceneProps {
   measurements: Measurements;
   selectedItems: WardrobeItem[];
+  gender: Gender;
+  skinTone: string;
 }
 
-export default function ThreeScene({ measurements, selectedItems }: ThreeSceneProps) {
+export default function ThreeScene({
+  measurements,
+  selectedItems,
+  gender,
+  skinTone,
+}: ThreeSceneProps) {
   return (
     <Canvas
       shadows
@@ -34,8 +42,17 @@ export default function ThreeScene({ measurements, selectedItems }: ThreeScenePr
         shadow-camera-bottom={-5}
       />
       <directionalLight position={[-4, 3, -3]} intensity={0.5} />
+      {/* Soft fill from sky/ground for more natural skin shading. */}
+      <hemisphereLight args={["#fdf7f0", "#9b8c7a", 0.5]} />
+      {/* Rim light to separate the figure from the background. */}
+      <directionalLight position={[0, 4, -6]} intensity={0.6} color="#cdd6ff" />
 
-      <Mannequin measurements={measurements} selectedItems={selectedItems} />
+      <Mannequin
+        measurements={measurements}
+        selectedItems={selectedItems}
+        gender={gender}
+        skinTone={skinTone}
+      />
 
       {/* Floor */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
