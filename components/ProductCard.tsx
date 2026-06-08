@@ -2,30 +2,25 @@
 
 import { useEffect, useState } from "react";
 import { Check, ShoppingBag, Shirt } from "lucide-react";
-import { getProduct, type BagItem } from "@/lib/catalog";
+import { getProduct } from "@/lib/catalog";
 import { GARMENT_SIZES, type SizeLabel } from "@/lib/fitLogic";
-
-interface ProductCardProps {
-  productId: string | null;
-  wornIds: string[];
-  recommendedSize: SizeLabel;
-  onTryOn: (productId: string, colorIndex: number) => void;
-  onRemoveTryOn: (productId: string) => void;
-  onAddToBag: (item: BagItem) => void;
-}
+import { useGameStore } from "@/lib/game/store";
+import { useRecommendedSize } from "@/lib/game/selectors";
+import { playClick } from "@/lib/game/audio";
 
 /**
  * Appears when the avatar stands near a podium. Lets the shopper pick a color,
- * try the item on their avatar, choose a size, and drop it in the bag.
+ * try the item on their avatar, choose a size, and drop it in the bag. All
+ * state is sourced from / written to the game store.
  */
-export function ProductCard({
-  productId,
-  wornIds,
-  recommendedSize,
-  onTryOn,
-  onRemoveTryOn,
-  onAddToBag,
-}: ProductCardProps) {
+export function ProductCard() {
+  const productId = useGameStore((s) => s.activeProductId);
+  const wornIds = useGameStore((s) => s.selectedIds);
+  const recommendedSize = useRecommendedSize();
+  const tryOn = useGameStore((s) => s.tryOn);
+  const removeTryOn = useGameStore((s) => s.removeTryOn);
+  const addToBag = useGameStore((s) => s.addToBag);
+
   const [colorIndex, setColorIndex] = useState(0);
   const [size, setSize] = useState<SizeLabel>(recommendedSize);
   const [added, setAdded] = useState(false);
@@ -44,18 +39,22 @@ export function ProductCard({
 
   const pickColor = (index: number) => {
     setColorIndex(index);
-    if (worn) onTryOn(product.id, index);
+    if (worn) tryOn(product.id, index);
   };
 
   const handleAddToBag = () => {
-    onAddToBag({ productId: product.id, colorIndex, size });
+    addToBag({ productId: product.id, colorIndex, size });
+    playClick();
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
   };
 
   return (
-    <div className="pointer-events-auto absolute bottom-6 left-1/2 z-10 w-[20rem] max-w-[90vw] -translate-x-1/2 overflow-hidden rounded-2xl border border-white/15 bg-zinc-900/85 text-white shadow-2xl backdrop-blur-md">
-      <div className="h-24 w-full" style={{ backgroundColor: product.colors[colorIndex] }} />
+    <div className="animate-card-rise pointer-events-auto absolute bottom-6 left-1/2 z-10 w-[20rem] max-w-[90vw] -translate-x-1/2 overflow-hidden rounded-2xl border border-white/15 bg-zinc-900/85 text-white shadow-2xl backdrop-blur-md">
+      <div
+        className="h-24 w-full transition-colors duration-300 ease-out"
+        style={{ backgroundColor: product.colors[colorIndex] }}
+      />
       <div className="flex flex-col gap-3 p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -76,9 +75,9 @@ export function ProductCard({
               aria-label={`Color ${i + 1}`}
               onClick={() => pickColor(i)}
               style={{ backgroundColor: color }}
-              className={`h-6 w-6 rounded-full transition-all ${
+              className={`press h-6 w-6 rounded-full transition-all hover:scale-110 ${
                 colorIndex === i
-                  ? "ring-2 ring-white ring-offset-2 ring-offset-zinc-900"
+                  ? "scale-110 ring-2 ring-white ring-offset-2 ring-offset-zinc-900"
                   : "ring-1 ring-white/20 hover:ring-white/60"
               }`}
             />
@@ -92,7 +91,7 @@ export function ProductCard({
               key={s}
               type="button"
               onClick={() => setSize(s)}
-              className={`min-w-9 rounded-md border px-2 py-1 text-xs font-semibold transition-all ${
+              className={`press min-w-9 rounded-md border px-2 py-1 text-xs font-semibold transition-all ${
                 size === s
                   ? "border-white bg-white text-zinc-900"
                   : "border-white/20 bg-white/5 text-white hover:border-white/50"
@@ -108,8 +107,8 @@ export function ProductCard({
           {product.tryOnSupported ? (
             <button
               type="button"
-              onClick={() => (worn ? onRemoveTryOn(product.id) : onTryOn(product.id, colorIndex))}
-              className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${
+              onClick={() => (worn ? removeTryOn(product.id) : tryOn(product.id, colorIndex))}
+              className={`press flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${
                 worn
                   ? "bg-white/15 text-white hover:bg-white/25"
                   : "bg-white text-zinc-900 hover:bg-zinc-200"
@@ -127,9 +126,15 @@ export function ProductCard({
           <button
             type="button"
             onClick={handleAddToBag}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-3 py-2.5 text-sm font-semibold text-white transition-all hover:from-indigo-400 hover:to-violet-400"
+            className={`press flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-white transition-all ${
+              added
+                ? "bg-gradient-to-r from-emerald-500 to-teal-500"
+                : "bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-400 hover:to-violet-400"
+            }`}
           >
-            {added ? <Check className="h-4 w-4" /> : <ShoppingBag className="h-4 w-4" />}
+            <span key={added ? "added" : "idle"} className="animate-pop-in">
+              {added ? <Check className="h-4 w-4" /> : <ShoppingBag className="h-4 w-4" />}
+            </span>
             {added ? "Added" : "Add to bag"}
           </button>
         </div>

@@ -1,5 +1,6 @@
 import type * as THREE from "three";
 import {
+  LAYOUT,
   STORE_COLLIDERS,
   STORE_TRIGGERS,
   type WallRect,
@@ -8,6 +9,10 @@ import { PODIUMS } from "@/lib/catalog";
 
 /** How close (world units) the avatar must be to a podium to inspect a product. */
 const PRODUCT_REACH = 2.4;
+
+/** Interior half-extents (inside the perimeter walls) used for zone detection. */
+const INTERIOR_HX = (LAYOUT.width - LAYOUT.wallThickness * 2) / 2;
+const INTERIOR_HZ = (LAYOUT.depth - LAYOUT.wallThickness * 2) / 2;
 
 /**
  * Transforms a world XZ point into a building's local frame (inverse of the
@@ -106,6 +111,23 @@ export function nearestProduct(pos: THREE.Vector3): string | null {
     }
   }
   return closest;
+}
+
+/**
+ * Returns the id of the store whose *interior room* contains the point, or null
+ * if the player is out in the plaza. Unlike {@link storeAtPoint} (a thin doorway
+ * trigger), this stays true the whole time the player is inside a shop, so the
+ * zone system can keep that interior mounted.
+ */
+export function interiorZoneAt(pos: THREE.Vector3): string | null {
+  for (const building of STORE_COLLIDERS) {
+    const [cx, cz] = building.center;
+    const [lx, lz] = toLocal(pos.x, pos.z, cx, cz, building.rotationY);
+    if (Math.abs(lx) <= INTERIOR_HX && Math.abs(lz) <= INTERIOR_HZ) {
+      return building.store.id;
+    }
+  }
+  return null;
 }
 
 /** Returns the id of the store whose doorway trigger contains the point, if any. */

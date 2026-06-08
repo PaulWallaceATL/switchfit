@@ -5,10 +5,11 @@ import type { MutableRefObject } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { Mannequin } from "@/components/Mannequin";
-import type { Measurements, WardrobeItem } from "@/lib/measurements";
-import type { Gender } from "@/lib/body";
 import type { InputState } from "@/components/game/input";
-import { nearestProduct, resolveColliders, storeAtPoint } from "@/components/game/collision";
+import { interiorZoneAt, resolveColliders } from "@/components/game/collision";
+import { playerHeading, playerPosition } from "@/components/game/playerState";
+import { useGameStore } from "@/lib/game/store";
+import { useSelectedItems } from "@/lib/game/selectors";
 
 const PLAYER_RADIUS = 0.35;
 
@@ -33,14 +34,6 @@ export interface PlayerMotion {
 
 interface PlayerProps {
   inputRef: MutableRefObject<InputState>;
-  measurements: Measurements;
-  selectedItems: WardrobeItem[];
-  gender: Gender;
-  skinTone: string;
-  /** Fired once when the avatar walks into a storefront's doorway. */
-  onEnterStore?: (storeId: string) => void;
-  /** Fired when the closest in-reach product changes (null when none). */
-  onNearProduct?: (productId: string | null) => void;
 }
 
 /** Returns `a` rotated toward `b` by fraction `t`, taking the shortest path. */
@@ -54,27 +47,23 @@ function lerpAngle(a: number, b: number, t: number): number {
 /**
  * Third-person character controller. Integrates movement, jumping and a
  * camera-relative heading every frame, drives a trailing follow camera, and
- * feeds locomotion data to the Mannequin for its walk/run animation.
+ * publishes the player's live transform to {@link playerPosition} for other
+ * systems (WorldSync, NPCManager). Avatar appearance is read from the store.
  */
-export function Player({
-  inputRef,
-  measurements,
-  selectedItems,
-  gender,
-  skinTone,
-  onEnterStore,
-  onNearProduct,
-}: PlayerProps) {
+export function Player({ inputRef }: PlayerProps) {
+  const measurements = useGameStore((s) => s.measurements);
+  const gender = useGameStore((s) => s.gender);
+  const skinTone = useGameStore((s) => s.skinTone);
+  const selectedItems = useSelectedItems();
+
   const group = useRef<THREE.Group>(null);
   const pos = useRef(new THREE.Vector3(0, 0, 0));
-  const heading = useRef(Math.PI); // face toward the starting camera
+  const heading = useRef(Math.PI);
   const camYaw = useRef(Math.PI);
   const vy = useRef(0);
   const speed = useRef(0);
   const motion = useRef<PlayerMotion>({ moving: false, speed: 0 });
   const scratch = useRef(new THREE.Vector3());
-  const currentStore = useRef<string | null>(null);
-  const currentProduct = useRef<string | null>(null);
   const camDistance = useRef(CAM_DISTANCE);
 
   useFrame((state, rawDelta) => {
@@ -106,7 +95,6 @@ export function Player({
     speed.current += (targetSpeed - speed.current) * Math.min(1, dt * ACCEL);
     if (speed.current < 0.01) speed.current = 0;
 
-    // Advance along the current facing direction.
     pos.current.x += Math.sin(heading.current) * speed.current * dt;
     pos.current.z += Math.cos(heading.current) * speed.current * dt;
 
@@ -126,21 +114,6 @@ export function Player({
     // Block the avatar against the storefront walls (doorways stay open).
     resolveColliders(pos.current, PLAYER_RADIUS);
 
-    // Fire on the rising edge of entering a doorway trigger; require leaving
-    // before the same (or another) store can trigger again.
-    const store = storeAtPoint(pos.current);
-    if (store !== currentStore.current) {
-      currentStore.current = store;
-      if (store) onEnterStore?.(store);
-    }
-
-    // Surface the closest product when standing near a podium.
-    const product = nearestProduct(pos.current);
-    if (product !== currentProduct.current) {
-      currentProduct.current = product;
-      onNearProduct?.(product);
-    }
-
     if (group.current) {
       group.current.position.copy(pos.current);
       group.current.rotation.y = heading.current;
@@ -149,10 +122,14 @@ export function Player({
     motion.current.moving = speed.current > 0.05;
     motion.current.speed = speed.current;
 
+    // Publish the live transform for other game systems.
+    playerPosition.copy(pos.current);
+    playerHeading.value = heading.current;
+
     // Trailing follow camera: yaw eases toward the avatar's heading.
     camYaw.current = lerpAngle(camYaw.current, heading.current, Math.min(1, dt * YAW_LERP));
-    // Pull the camera in tight while inside a store so it doesn't clip the walls.
-    const targetDist = store ? CAM_DISTANCE_INDOOR : CAM_DISTANCE;
+    const inside = interiorZoneAt(pos.current) !== null;
+    const targetDist = inside ? CAM_DISTANCE_INDOOR : CAM_DISTANCE;
     camDistance.current += (targetDist - camDistance.current) * Math.min(1, dt * CAM_DIST_LERP);
     const ccy = camYaw.current;
     const desired = scratch.current.set(

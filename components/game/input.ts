@@ -17,10 +17,12 @@ export interface InputState {
   run: boolean;
   /** Set true on a jump press; the Player consumes (resets) it. */
   jumpQueued: boolean;
+  /** Set true on an interact (E) press; the consumer resets it. */
+  interactQueued: boolean;
 }
 
 export function createInputState(): InputState {
-  return { forward: 0, right: 0, run: false, jumpQueued: false };
+  return { forward: 0, right: 0, run: false, jumpQueued: false, interactQueued: false };
 }
 
 const MOVE_CODES = new Set([
@@ -67,6 +69,10 @@ export function useKeyboardControls(inputRef: MutableRefObject<InputState>) {
       if (MOVE_CODES.has(e.code)) e.preventDefault();
       if (e.code === "Space") {
         inputRef.current.jumpQueued = true;
+        return;
+      }
+      if (e.code === "KeyE") {
+        inputRef.current.interactQueued = true;
         return;
       }
       if (!pressed.has(e.code)) {
